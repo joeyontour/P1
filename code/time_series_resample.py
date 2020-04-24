@@ -2,83 +2,73 @@ import numpy as np
 import pandas as pd
 from datetime import datetime
 import glob
+import os
 import matplotlib.pyplot as plt
 
 
-def resample(metric):
-    metric = metric.replace('/', '_')
-    csv_files = glob.glob('../data/single_runs/*/*' + metric + '.csv')
-    
-    dfs = []
-    
-    for csv_file in csv_files:
-        print(csv_file)
-        df = pd.read_csv(csv_file)
-        print(df)
-        df.index = df.timestamp
-        df = df.drop('timestamp', axis=1)
-        df.index = pd.to_datetime(df.index)
-        df = df.resample('100L').pad()
-        df = df.dropna()
-        dfs.append(df)
+def resample(metrics, batch):
 
-    sizes = [df.shape[0] for df in dfs]
+    if not os.path.exists("../data/resampled/"):
+        os.makedirs("../data/resampled/")
 
-    median = np.median(sizes)
-    dfs_cleaned = []
-    for df in dfs:
-        if df.shape[0] >= median*0.8 and df.shape[0] <= median*1.2:
-            print(df.shape[0])
-            dfs_cleaned.append(df)
+    for metric in metrics:
+        metric = metric.replace('/', '_')
+        csv_files = glob.glob('../data/single_runs/batch' + str(batch) + '/*' + metric + '.csv')
+        #csv_files = glob.glob('../data/single_runs/*/*' + metric + '.csv')
+        
+        dfs = []
+        
+        for csv_file in csv_files:
+            df = pd.read_csv(csv_file)
+            df.index = df.timestamp
+            df = df.drop('timestamp', axis=1)
+            df.index = pd.to_datetime(df.index)
+            df = df.resample('100L').pad()
+            df = df.dropna()
+            dfs.append(df)
 
-    sizes = [df.shape[0] for df in dfs_cleaned]
+        sizes = [df.shape[0] for df in dfs]
+        if len(sizes) > 3:
+            median = np.median(sizes)
+            dfs_cleaned = []
+            for df in dfs:
+                if df.shape[0] >= median*0.8 and df.shape[0] <= median*1.2:
+                    dfs_cleaned.append(df)
+            
+            sizes = [df.shape[0] for df in dfs_cleaned]
+            num_of_bins = 3
+            
+            quantiles = pd.qcut(sizes, num_of_bins, duplicates='drop').categories
+            if len(quantiles) == num_of_bins:
+                bin = [ [] for i in range(num_of_bins) ]
 
-    bin_0 = []
-    bin_1 = []
-    bin_2 = []
+                for df in dfs_cleaned:
+                    for j in range(num_of_bins):
+                        if df.shape[0] >= quantiles[j].left and df.shape[0] < quantiles[j].right:
+                            bin[j].append(df)
+ 
 
-    for df in dfs_cleaned:
-        if df.shape[0] <= quantiles[0].right:
-            bin_0.append(df)
-        elif df.shape[0] <= quantiles[1].right:
-            bin_1.append(df)
-        else:
-            bin_2.append(df)
-
-    min_0 = np.min([df.shape[0] for df in bin_0])
-    bin_0_shaped = []
-    for df in bin_0:
-        df = df[0:min_0]
-        bin_0_shaped.append(df)
-
-    [print(df.shape[0]) for df in bin_0_shaped]
-
-    min_1 = np.min([df.shape[0] for df in bin_1])
-    bin_1_shaped = []
-    for df in bin_1:
-        df = df[0:min_1]
-        bin_1_shaped.append(df)
-
-    [print(df.shape[0]) for df in bin_1_shaped]
-
-    min_2 = np.min([df.shape[0] for df in bin_2])
-    bin_2_shaped = []
-    for df in bin_2:
-        df = df[0:min_2]
-        df.drop(['timestamp'], axis=1)
-        bin_2_shaped.append(df)
-
-    write_csv(bin_0_shaped, metric)
+                for j in range(num_of_bins):
+                    if len(bin[j]) > 0:
+                        min_length = np.min([df.shape[0] for df in bin[j]])
+                        bin_shaped = []
+                        for df in bin[j]:
+                            df = df[0:min_length]
+                            bin_shaped.append(df)
+                        write_csv(bin_shaped,j,metric,batch)
 
 
-def write_csv(bin, metric):
+def write_csv(bin, bin_num, metric, batch):
+    for i in range(len(bin)):
+        df = bin[i]
+        df.to_csv('../data/resampled/batch' + str(batch) + '_' + metric + '_bin' + str(bin_num) + '_' + str(i) + '.csv', index=False, header=False)
 
-    for i, df in bin:
-        df.to_csv('../data/resampled/' + metric + str(i) + '.csv', index=False)
 
-
-def run(metric):   
-    print("resample start")                                   
-    resample(metric)
+def run(metrics, r1, r2):   
+    print("resample start")    
+    for i in range(r1,r2+1):
+        if (i != 13):
+            print("batch " + str(i))                               
+            resample(metrics, i)
     print("resample end")  
     print("--------------------------------")

@@ -21,9 +21,8 @@ try:
 
    # measuring.run(arg1,arg2)
 
-    time_series_single_runs.run(read_metrics(), arg1, arg2)
-    metric = read_metrics()[0]
-  #  time_series_resample.run(metric)
+ #   time_series_single_runs.run(read_metrics(), arg1, arg2)
+    time_series_resample.run(read_metrics(), arg1, arg2)
  #   time_series_aggregations_outliers.run(arg1, arg2)
     
 except ValueError as err:

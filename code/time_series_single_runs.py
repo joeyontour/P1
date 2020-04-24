@@ -99,7 +99,7 @@ def extract(metrics, i, file = None, depth = 0, f = None):
                                      
 def run(metrics, r1, r2):   
     print("single runs start")                                   
-    for i in range(r1,r2):
+    for i in range(r1,r2+1):
         print("batch " + str(i))
         extract(metrics, i)
     print("single runs end")  
