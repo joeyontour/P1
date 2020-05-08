@@ -12,7 +12,6 @@ def resample(metrics, batch):
         os.makedirs("../data/resampled/")
 
     for metric in metrics:
-        metric = metric.replace('/', '_')
         csv_files = glob.glob('../data/single_runs/batch' + str(batch) + '/*' + metric + '.csv')
         #csv_files = glob.glob('../data/single_runs/*/*' + metric + '.csv')
         
@@ -25,6 +24,8 @@ def resample(metrics, batch):
             df.index = pd.to_datetime(df.index)
             df = df.resample('100L').pad()
             df = df.dropna()
+            df = df.reset_index()
+            df = df.drop('timestamp', axis=1)
             dfs.append(df)
 
         sizes = [df.shape[0] for df in dfs]
@@ -59,9 +60,11 @@ def resample(metrics, batch):
 
 
 def write_csv(bin, bin_num, metric, batch):
+
     for i in range(len(bin)):
         df = bin[i]
-        df.to_csv('../data/resampled/batch' + str(batch) + '_' + metric + '_bin' + str(bin_num) + '_' + str(i) + '.csv', index=False, header=False)
+        df.to_csv('../data/resampled/batch' + str(batch) + '_' + metric + '_bin' + str(bin_num) + '_' + str(i) + '.csv', header=False)
+    #    df.to_csv('../data/resampled/batch' + str(batch) + '_' + metric + '_bin' + str(bin_num) + '_complete.csv', header=False, mode='a')
 
 
 def run(metrics, r1, r2):   
