@@ -28,6 +28,7 @@ def get_user_conf():
     if os.path.exists(path_conf + '/user_conf/batches_metrics.json'):
         with open(path_conf + '/user_conf/batches_metrics.json') as f:
             user_metrics = json.load(f)
+            user_metrics['batch6_Spindle-driveLoad'] = 'ready'
             
     return {'batches': user_batches, 'metrics': user_metrics}
 

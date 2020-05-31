@@ -1,5 +1,6 @@
 var base_color = '#223';
 var active_color = "#05A"
+var ready_color = "#0A5"
 
 batch_height = 30;
 batch_width = 145
@@ -18,7 +19,7 @@ function draw_batches() {
 	batches = data.batches
 	if (isEmpty(batch_dict) == true) {
 		batches.forEach(function(batch) {
-			batch_dict[batch] = false;
+			batch_dict[batch] = 'inactive';
 		})
 	}
 	console.log(batch_dict);
@@ -34,7 +35,7 @@ function draw_batches() {
 			.attr("width", function(d){return batch_width})
 			.attr("x", function (d, i) { return 10 + i * (batch_width + 10)})
 			.attr("y", 20)
-			.style("fill", function (d, i) {if (batch_dict[d] == true){return active_color} else{return base_color}})
+			.style("fill", function (d, i) {if (batch_dict[d] == 'active'){return active_color} else{return base_color}})
 			.on("mouseover", function(d, i) {return on_mouse_over(d);})
 			.on("mouseout", function(d, i) {return on_mouse_out(d);})
 			.on("click", function(d, i) {batch_selected(d)})
@@ -68,7 +69,7 @@ function draw_metrics() {
 	data.batches.forEach(function(batch){
 	if (isEmpty(metric_dict) == true) {	
 		metrics.forEach(function(metric) {
-			metric_dict[batch + '_' + metric] = false;
+			metric_dict[batch + '_' + metric] = 'inactive';
 		})
 	}
 	svg.selectAll(".metrics_" + j)
@@ -81,7 +82,7 @@ function draw_metrics() {
 			.attr("width", function(d){return metric_width})
 			.attr("x", 10 + j * (batch_width + 10))
 			.attr("y", function (d, i) { return batch_height*2 + 10 + i * (metric_height + 10)})
-			.style("fill", function (d, i) {if (metric_dict[batch + '_' + d] == true){return active_color} else{return base_color}})
+			.style("fill", function (d, i) {if (metric_dict[batch + '_' + d] == 'active'){return active_color} else if (metric_dict[batch + '_' + d] == 'ready'){return ready_color} else{return base_color}})
 			.on("mouseover", function(d, i) {return on_mouse_over(d);})
 			.on("mouseout", function(d, i) {return on_mouse_out(d);})
 			.on("click", function(d, i) {metric_selected([batch, d])})
@@ -110,24 +111,24 @@ function draw_metrics() {
 }
 
 function batch_selected(batch) {
-	if (batch_dict[batch] == true) {
+	if (batch_dict[batch] == 'active') {
 		d3.select('#' + batch).style('fill', base_color);
-		batch_dict[batch] = false;
+		batch_dict[batch] = 'inactive';
 	} else {
 		d3.select('#' + batch).style('fill', active_color);
-		batch_dict[batch] = true;
+		batch_dict[batch] = 'active';
 	}
 }
 
 function metric_selected(batch_metric) {
 	var key = batch_metric[0] + '_' + batch_metric[1]
-	console.log(metric_dict);
-	if (metric_dict[key] == true) {
+
+	if (metric_dict[key] == 'active' || metric_dict[key] == 'ready') {
 		d3.select('#' + key).style('fill', base_color);
-		metric_dict[key] = false;
+		metric_dict[key] = 'inactive';
 	} else {
 		d3.select('#' + key).style('fill', active_color);
-		metric_dict[key] = true;
+		metric_dict[key] = 'active';
 	}
 	
 }
@@ -186,14 +187,28 @@ function load() {
 function init() {
 	
 	svg = d3.select("body").append("svg");
-
-	svg.append("rect")
+	svg_width = parseInt(svg.style("width"), 10);
+	save_button = svg.append("rect")
 		.attr("height", 30)
-		.attr("width", 60)
-		.attr("x", function (d, i) { return 10 + i * (batch_width + 10)})
+		.attr("width", 80)
+		.attr("x", svg_width / 2 - 40)
 		.attr("y", 750)
-		.style("fill", base_color)
+		.style("fill", '#083')
+		.on("mouseover", function(d, i) {return on_mouse_over(d);})
+		.on("mouseout", function(d, i) {return on_mouse_out(d);})
 		.on("click", function(d, i) {save()})
+		
+	svg.append("text")
+		.attr("text-anchor", "middle")
+		.attr("height", 30)
+		.attr("width", 80)
+		.attr("x", svg_width / 2)
+		.attr("y", 750 + 20)
+		.attr("font-size", "0.7em")
+		.on("mouseover", function(d, i) {return on_mouse_over(d);})
+		.on("mouseout", function(d, i) {return on_mouse_out(d);})
+		.on("click", function(d, i) {save()})
+		.text('Save')
 	load();
 
 	
