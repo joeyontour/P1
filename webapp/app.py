@@ -3,6 +3,7 @@ import os
 import re
 from flask import Flask, render_template, request, make_response
 import pandas as pd
+from th_code.lstm import train_handler
 
 app = Flask(__name__)
 
@@ -16,7 +17,7 @@ def available_logs():
     
 def metrics():
     with open(path_conf + '/metrics.json') as f:
-        return [x.replace('/', '-').replace(' ', '_') for x in json.load(f)]
+        return [x.replace('/', '_').replace(' ', '+') for x in json.load(f)]
     
 
 def get_user_conf():
@@ -32,6 +33,9 @@ def get_user_conf():
             
     return {'batches': user_batches, 'metrics': user_metrics}
 
+def train_models(conf):
+    train_handler(conf['metrics'])
+    
 
 @app.route("/")
 def index():
@@ -52,6 +56,7 @@ def save():
     with open(path_conf + '/user_conf/batches_metrics.json', 'w') as f:
         json.dump(conf_data['metrics'], f)
         
+    train_models(get_user_conf())
     resp = make_response(json.dumps(conf_data))
     resp.status_code = 200
     resp.headers['Access-Control-Allow-Origin'] = '*'
@@ -74,7 +79,7 @@ def natural_keys(text):
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(threaded=False)
     
     
 

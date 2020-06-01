@@ -10,6 +10,7 @@
 	"Axis/X/aaLeadP",
 	"Axis/Y/aaLeadP",
 	"Axis/Z/aaLeadP",
+	"Power/Active Power A",
 	"Axis/X/aaVactB",
 	"Axis/Y/aaVactB",
 	"Axis/Z/aaVactB"
