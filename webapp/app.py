@@ -3,7 +3,9 @@ import os
 import re
 from flask import Flask, render_template, request, make_response
 import pandas as pd
-from th_code.lstm import train_handler
+import th_code.lstm as lstm
+import threading
+import glob
 
 app = Flask(__name__)
 
@@ -12,12 +14,35 @@ path2 = os.path.relpath('../data/', path)
 path_logs = path2 + '/logs/'
 path_conf = os.path.relpath('../conf/', path)
 data = list()
+
+current_size = 0
+target_size = 1
+
 def available_logs():
     return sorted(os.listdir(path=path_logs), key=natural_keys)
     
 def metrics():
     with open(path_conf + '/metrics.json') as f:
         return [x.replace('/', '_').replace(' ', '+') for x in json.load(f)]
+    
+    
+def num_of_generated_data():
+    result = dict()
+    for metric in  metrics():
+        result[metric] = len(glob.glob('../data/generated/batch*_' + metric + '*'))
+    return result
+
+def available_models():
+    result = dict()
+    for batch in available_logs():
+        for metric in  metrics():
+            key = batch + '_' + metric
+            if  glob.glob('../models/lstm/' + key + '*'):
+                result[key] = 1
+            else:
+                result[key] = 0
+       
+    return result
     
 
 def get_user_conf():
@@ -34,7 +59,7 @@ def get_user_conf():
     return {'batches': user_batches, 'metrics': user_metrics}
 
 def train_models(conf):
-    train_handler(conf['metrics'])
+    lstm.train_handler(conf['metrics'])
     
 
 @app.route("/")
@@ -61,12 +86,50 @@ def save():
     resp.status_code = 200
     resp.headers['Access-Control-Allow-Origin'] = '*'
     return resp
+    
+@app.route('/generate', methods=['POST'])
+def generate():
+
+  #  json_data = request.get_json()
+  #  current_size = 0
+    b_metrics = get_user_conf()['metrics']
+    keys = [key for key in b_metrics if b_metrics[key] == 'active']
+    metrics_l = metrics()
+    data = {}
+    for metric in metrics_l:
+        keys_active = [key for key in keys if metric in key]
+        data[metric] = keys_active
+    x = threading.Thread(target=lstm.generate_data, args=(data, 0, 2))
+    x.start()
+    
+    resp = make_response(json.dumps([current_size, target_size]))
+    resp.status_code = 200
+    resp.headers['Access-Control-Allow-Origin'] = '*'
+    return resp
 
 @app.route('/load', methods=['GET'])
 def load():
 
     conf_data = get_user_conf()
     resp = make_response(json.dumps(conf_data))
+    resp.status_code = 200
+    resp.headers['Access-Control-Allow-Origin'] = '*'
+    return resp
+    
+@app.route('/state', methods=['GET'])
+def state():
+
+    state_data = num_of_generated_data()
+    resp = make_response(json.dumps(state_data))
+    resp.status_code = 200
+    resp.headers['Access-Control-Allow-Origin'] = '*'
+    return resp
+
+@app.route('/models', methods=['GET'])
+def models():
+
+    models_data = available_models()
+    resp = make_response(json.dumps(models_data))
     resp.status_code = 200
     resp.headers['Access-Control-Allow-Origin'] = '*'
     return resp

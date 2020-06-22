@@ -1,16 +1,20 @@
-from keras.models import Sequential
-from keras.layers import LSTM
-from keras.layers import Dense
-from keras.models import load_model
-from keras.callbacks import EarlyStopping
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import LSTM
+from tensorflow.keras.layers import Dense
+from tensorflow.keras.models import load_model
+from tensorflow.keras.callbacks import EarlyStopping
 from numpy import array
 import pandas as pd
 import numpy as np
 from matplotlib import pyplot as plt
 import glob
 import tensorflow as tf
+import random
+import th_code.generate_yaml as generate_yaml
 physical_devices = tf.config.list_physical_devices('GPU') 
 tf.config.experimental.set_memory_growth(physical_devices[0], True)
+
+
 
 def get_resampled_data(metric, batch):
     if batch == -1:
@@ -57,6 +61,44 @@ def train_models(metric, batch):
             callbacks = [EarlyStopping(monitor='loss', patience=10)]
             model.fit(X, y, epochs=100, verbose=0, callbacks=callbacks)
             model.save('../models/lstm/' + file_name)
+
+
+def generate_data(data, current_size, target_size):
+    generate_yaml.get_data(data.keys())
+    return 0
+    for key in data:
+        current_size = 0
+        models = []
+        resampled = []
+        for b_metric in data[key]:
+            models.extend(glob.glob('../models/lstm/' + b_metric + '*'))
+            resampled.extend(glob.glob('../data/resampled/' + b_metric + '*.csv'))
+        random.shuffle(models)
+        random.shuffle(resampled)
+        print('models',len(models))
+        print('reampled', len(resampled))
+        
+        for model_path in models:
+            for csv_file in resampled:
+                if current_size < target_size:
+                    df = pd.read_csv(csv_file, header=None)
+
+                    n_features = 1
+                    raw_seq = df[1].to_numpy()
+                    n_steps = 3
+                    X2, y2 = split_series(raw_seq, n_steps)
+                    X2 = X2.reshape((X2.shape[0], X2.shape[1], n_features))
+                    x_input2 = X2
+
+                    model = load_model(model_path)
+                    yhat = model.predict(x_input2, verbose=0)
+                    #plt.figure(figsize=(16,4))
+                    #plt.scatter(range(len(y)), y, color='red')
+                    #plt.scatter(range(len(yhat)), yhat, color='blue')
+
+                    pd.DataFrame(yhat).to_csv('../data/generated/' + model_path.split('\\')[-1] + '$' + csv_file.split('\\')[-1], header=None)
+                    current_size += 1
+    generate_yaml.get_data(data.keys())
 
 
 def train_handler(user_conf):
