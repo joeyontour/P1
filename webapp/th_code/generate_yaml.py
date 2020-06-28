@@ -10,18 +10,25 @@ from datetime import timedelta
 path = os.path.dirname(__file__)
 path2 = os.path.relpath('../templates', path)
 base_path = path2 + '/logs/'
-
+folder_path = ''
 output = []
 
 def get_data(keys):
-    dfs = {}
-    for key in keys:
-        for filename in glob.glob('../data/generated/*' + key + '*.csv'):
-            key_perm = key.replace('_', '/')
-        #    print(key_perm)
-            dfs[key_perm] = pd.read_csv(filename, header=None)
-            break
-    write_back(dfs, list(dfs))
+    datetimeFormat = '%Y-%m-%dT%H-%M-%S'
+    now = datetime.now()
+    stamp = now.strftime(datetimeFormat)
+    folder_path = '../generated_batches/generated_' + stamp
+    os.mkdir(folder_path)
+    for i in range(40):
+        dfs = {}
+        for key in keys:
+            for filename in glob.glob('../data/generated/*' + key + '*.csv'):
+                key_perm = key.replace('_', '/')
+            #    print(key_perm)
+                dfs[key_perm] = pd.read_csv(filename, header=None)
+                break
+        write_back(dfs, list(dfs), folder_path)
+    return folder_path
 
 
 def extract_first_last(metrics):
@@ -90,16 +97,16 @@ def Sort(li):
     li.insert(0,first)
     return li 
 
-# TODO generate data with all metrics for the batches, pass data
-def write_back(data, metrics, file = None, depth = 0, f = None):
+
+def write_back(data, metrics, folder_path, file = None, depth = 0, f = None):
     datetimeFormat = '%Y-%m-%dT%H-%M-%S'
     now = datetime.now()
     stamp = now.strftime(datetimeFormat)
-    dump_file = open('../generated_batches/generated_' + stamp + '.yaml',"w")
+    dump_file = open(folder_path + '/generated_' + stamp + '.xes.yaml',"w")
     data = resample(data, metrics)
     
     metric_indecies = list(np.zeros(len(metrics)))
-    with open('../templates/' + "/batch9.yaml") as stream:
+    with open('../templates/' + "/batch15.yaml") as stream:
         docs = yaml.load_all(stream)
         for doc in docs:
             for k,v in doc.items():      
@@ -115,10 +122,12 @@ def write_back(data, metrics, file = None, depth = 0, f = None):
                                                # print(data[metrics[k]][1][metric_indecies[k]])
                                                 if len(data[metrics[k]][1]) > metric_indecies[k]:
                                                     v3['value'] = str(data[metrics[k]][1][metric_indecies[k]])
-                                                    v3['timestamp'] = str(data[metrics[k]][0][metric_indecies[k]])
+                                                    v3['timestamp'] = str(data[metrics[k]][0][metric_indecies[k]]).replace(' ', 'T')[:-3]
                                                 metric_indecies[k] = metric_indecies[k] + 1
-
-                yaml.dump(doc, dump_file)
+            dump_file.write("---\n")
+            yaml.dump(doc, dump_file)
+        yaml.dump_all(documents=docs, stream=stream)
+      #  yaml.dump_all(docs, dump_file)
     dump_file.close()
                                             
 

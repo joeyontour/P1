@@ -4,6 +4,7 @@ import re
 from flask import Flask, render_template, request, make_response
 import pandas as pd
 import th_code.lstm as lstm
+import th_code.generate_yaml as generate_yaml
 import threading
 import glob
 
@@ -31,6 +32,13 @@ def num_of_generated_data():
     for metric in  metrics():
         result[metric] = len(glob.glob('../data/generated/batch*_' + metric + '*'))
     return result
+
+def batch_progress():
+    folder_path = glob.glob('../generated_batches/*')[-1]
+    print(folder_path)
+
+    return [len(glob.glob(folder_path + '/*')), 40]
+
 
 def available_models():
     result = dict()
@@ -67,6 +75,7 @@ def index():
 
     data = {'batches': available_logs(), 'metrics':metrics(), 'conf':dict()}
   #  print(data)
+    
     return render_template("index.html", data=data)
 
     
@@ -81,7 +90,7 @@ def save():
     with open(path_conf + '/user_conf/batches_metrics.json', 'w') as f:
         json.dump(conf_data['metrics'], f)
         
-    train_models(get_user_conf())
+ #   train_models(get_user_conf())
     resp = make_response(json.dumps(conf_data))
     resp.status_code = 200
     resp.headers['Access-Control-Allow-Origin'] = '*'
@@ -101,7 +110,8 @@ def generate():
         data[metric] = keys_active
     x = threading.Thread(target=lstm.generate_data, args=(data, 0, 2))
     x.start()
-    
+   # folder_path = lstm.generate_data(data, 0, 2)
+
     resp = make_response(json.dumps([current_size, target_size]))
     resp.status_code = 200
     resp.headers['Access-Control-Allow-Origin'] = '*'
@@ -119,11 +129,12 @@ def load():
 @app.route('/state', methods=['GET'])
 def state():
 
-    state_data = num_of_generated_data()
+    state_data = batch_progress()
     resp = make_response(json.dumps(state_data))
     resp.status_code = 200
     resp.headers['Access-Control-Allow-Origin'] = '*'
     return resp
+    
 
 @app.route('/models', methods=['GET'])
 def models():

@@ -4,10 +4,13 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 def create_anim(metric):
-    with imageio.get_writer('../../vis/gifs/' + metric + '.gif', mode='I', duration=0.5) as writer:
+    i = 0
+    with imageio.get_writer('../../vis/gifs/' + metric + '.gif', mode='I', duration=0.4) as writer:
         for filename in glob.glob('../../vis/images/*' + metric + '*.png'):
-            image = imageio.imread(filename)
-            writer.append_data(image)
+            if i <= 30:
+                image = imageio.imread(filename)
+                writer.append_data(image)
+            i += 1
             
 def create_pngs(metric):
     y_min = 0
@@ -31,5 +34,7 @@ def create_pngs(metric):
         plt.savefig('../../vis/images/' + filename.split('\\')[-1][:-4] + '.png')
         plt.close()
         
-#create_pngs('Axis_X_aaLoad')
-create_anim('Axis_X_aaLoad')
+
+metric = 'Axis_Z_aaVactB'      
+create_pngs(metric)
+create_anim(metric)

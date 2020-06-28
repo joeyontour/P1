@@ -62,7 +62,7 @@ function draw_batches() {
 			.on("click", function(d, i) {batch_selected(d)})
 			.text(function(d) {return d})
 			
-			draw_metrics()
+			setTimeout(draw_metrics(), 1000);
 
 }
 
@@ -87,7 +87,7 @@ function draw_metrics() {
 			.attr("width", function(d){return batch_width})
 			.attr("x", 10 + j * (batch_width + 10))
 			.attr("y", function (d, i) { return batch_height*2 + 10 + i * (metric_height + 10)})
-			.style("fill", function (d, i) {if (metric_dict[batch + '_' + d] == 'active'){return active_color} else if (metric_dict[batch + '_' + d] != 'ready'){return not_ready_color} else{return base_color}})
+			.style("fill", function (d, i) {if (metric_dict[batch + '_' + d] == 'active'){return active_color} else if (metric_dict[batch + '_' + d] != 'ready'){return base_color} else{return base_color}})
 			.on("mouseover", function(d, i) {return on_mouse_over(d);})
 			.on("mouseout", function(d, i) {return on_mouse_out(d);})
 			.on("click", function(d, i) {metric_selected([batch, d])})
@@ -152,9 +152,10 @@ function draw_metrics() {
 
 function update_metrics(data) {
 	for (const [key, value] of Object.entries(data)) {
-		d3.select('#' + key).style("fill", function() {if (value == 1 ){return base_color} else {return not_ready_color}});
-
-		console.log(key, value);
+		if (value != 1) {
+			d3.select('#' + key).style("fill", not_ready_color);
+		}
+		//console.log(key, value);
 	  }
 
 }
@@ -184,6 +185,7 @@ function batch_selected(batch) {
 			}
 		})
 	}
+	save();
 }
 
 function metric_selected(batch_metric) {
@@ -197,6 +199,7 @@ function metric_selected(batch_metric) {
 			metric_dict[key] = 'active';
 		}
 	}
+	save();
 }
 
 function on_mouse_over(d) {
@@ -212,7 +215,7 @@ function on_mouse_out(d) {
 
 }
 
-function check_state(metric) {
+function check_state() {
 		$.ajax({
             type: "GET",
             cache: false,
@@ -220,9 +223,12 @@ function check_state(metric) {
             url: '/state',
             dataType: "json",
             success: function(data) { 
-				for(var key in data) {
-					var current_size = data[key];
-					d3.select('#generate_text_' + key).text(current_size); 
+					console.log(data)
+					d3.select('#generate_text').text(data[0] + '/' + data[1]); 
+					if (data[0] == data[1]){
+						d3.select('#generate').style('fill', button_color);
+						gen_blocked = false; 
+					
 				}
             },
             error: function(jqXHR) {
@@ -232,22 +238,35 @@ function check_state(metric) {
         })
 }
 
-function generate_data() {
 
-	$.ajax({
-            type: "POST",
-            cache: false,
-            contentType: 'application/json',
-            url: '/generate',
-            dataType: "json",
-            success: function(data) { 
-                console.log(data);      
-            },
-            error: function(jqXHR) {
-                alert("error: " + jqXHR.status);
-                console.log(jqXHR);
-            }
-        })
+function start_state_check() {
+	window.setInterval(function(){
+		check_state();
+	  }, 60000);
+}
+
+var gen_blocked = false;
+function generate_data() {
+	d3.select('#generate').style('fill', '#888'); 
+	setTimeout(start_state_check, 30000)
+	
+	if (gen_blocked == false) {
+		gen_blocked = true; 
+		$.ajax({
+				type: "POST",
+				cache: false,
+				contentType: 'application/json',
+				url: '/generate',
+				dataType: "json",
+				success: function(data) { 
+						
+				},
+				error: function(jqXHR) {
+					alert("error: " + jqXHR.status);
+					console.log(jqXHR);
+				}
+			})
+		}
 }
 
 function save() {
@@ -317,6 +336,7 @@ function init() {
 	if (batch_width < 120) {
 		batch_width = 120;
 	}
+	/*
 	save_button = svg.append("rect")
 		.attr("height", metric_height)
 		.attr("width", 140)
@@ -340,14 +360,25 @@ function init() {
 		.on("mouseout", function(d, i) {return on_mouse_out(d);})
 		.on("click", function(d, i) {save()})
 		.text('Save Config')
-
-
+		*/
+	/*
+		var input = d3.select("svg")
+					.append("div")
+					.append("input")
+					.attr("type", "range")
+					.attr("min", 1)
+					.attr("max", 100)
+					.on("input", function() {
+						console.log(+this.value);
+						});
+	*/					
 		save_button = svg.append("rect")
+		.attr('id', 'generate')
 		.attr("height", metric_height)
 		.attr("width", 140)
 		.attr("rx", 18)
 		.attr("ry", 18)
-		.attr("x", svg_width / 2 + 10)
+		.attr("x", svg_width / 2 + -70)
 		.attr("y", y_save)
 		.style("fill", button_color)
 		.on("mouseover", function(d, i) {return on_mouse_over(d);})
@@ -355,10 +386,11 @@ function init() {
 		.on("click", function(d, i) {generate_data()})
 		
 	svg.append("text")
+		.attr('id', 'generate_text')
 		.attr("text-anchor", "middle")
 		.attr("height", metric_height)
 		.attr("width", 140)
-		.attr("x", svg_width / 2 + 80)
+		.attr("x", svg_width / 2)
 		.attr("y", y_save + 20)
 		.attr("font-size", "0.9em")
 		.on("mouseover", function(d, i) {return on_mouse_over(d);})
@@ -367,7 +399,7 @@ function init() {
 		.text('Generate Batch')
 	load();
 	available_models();
-	
+	start_state_check();
 	
 }
 

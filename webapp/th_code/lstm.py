@@ -1,8 +1,8 @@
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM
-from tensorflow.keras.layers import Dense
+from keras.models import Sequential
+from keras.layers import LSTM
+from keras.layers import Dense
 from tensorflow.keras.models import load_model
-from tensorflow.keras.callbacks import EarlyStopping
+from keras.callbacks import EarlyStopping
 from numpy import array
 import pandas as pd
 import numpy as np
@@ -10,9 +10,9 @@ from matplotlib import pyplot as plt
 import glob
 import tensorflow as tf
 import random
+import os
 import th_code.generate_yaml as generate_yaml
-physical_devices = tf.config.list_physical_devices('GPU') 
-tf.config.experimental.set_memory_growth(physical_devices[0], True)
+
 
 
 
@@ -44,7 +44,7 @@ def train_models(metric, batch):
         file_name = split_path(csv_file)[-1][:-4]
         print(file_name)
         if not glob.glob('../models/lstm/' + file_name):
-            print(' ' + metric)   
+            print(' ' + metric, 'file:', file_name)   
             df = pd.read_csv(csv_file, header=None)
             raw_seq = df[1].to_numpy()
             n_steps = 3
@@ -60,12 +60,14 @@ def train_models(metric, batch):
             model.compile(optimizer='adam', loss='mse')
             callbacks = [EarlyStopping(monitor='loss', patience=10)]
             model.fit(X, y, epochs=100, verbose=0, callbacks=callbacks)
-            model.save('../models/lstm/' + file_name)
+         #   model.save('../models/lstm/test')
+            model_path = '../models/lstm/' + file_name
+         #   os.mkdir(model_path)
+            model.save(model_path)
 
 
 def generate_data(data, current_size, target_size):
-    generate_yaml.get_data(data.keys())
-    return 0
+
     for key in data:
         current_size = 0
         models = []
@@ -75,8 +77,8 @@ def generate_data(data, current_size, target_size):
             resampled.extend(glob.glob('../data/resampled/' + b_metric + '*.csv'))
         random.shuffle(models)
         random.shuffle(resampled)
-        print('models',len(models))
-        print('reampled', len(resampled))
+      #  print('models',len(models))
+      #  print('reampled', len(resampled))
         
         for model_path in models:
             for csv_file in resampled:
@@ -98,11 +100,12 @@ def generate_data(data, current_size, target_size):
 
                     pd.DataFrame(yhat).to_csv('../data/generated/' + model_path.split('\\')[-1] + '$' + csv_file.split('\\')[-1], header=None)
                     current_size += 1
-    generate_yaml.get_data(data.keys())
+    return generate_yaml.get_data(data.keys())
 
 
 def train_handler(user_conf):
-    
+    physical_devices = tf.config.list_physical_devices('GPU') 
+    tf.config.experimental.set_memory_growth(physical_devices[0], True)
     actives = list()
     for key in user_conf:
         if user_conf[key] == 'active':
@@ -113,7 +116,7 @@ def train_handler(user_conf):
         batch = int(batch[5:])
         metric = '_'.join(active.split('_')[1:])
         metric = metric.replace('+', ' ')
-        print(batch, metric)
+      #  print(batch, metric)
         train_models(metric, batch)
     
 
